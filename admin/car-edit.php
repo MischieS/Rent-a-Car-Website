@@ -1,199 +1,218 @@
 <?php
+session_start();
+require_once '../config/database.php';
 
-// Include necessary files
-require_once '../config/config.php';
-require_once '../includes/auth_validate.php';
+$database = new Database();
+$db = $database->getConnection();
 
-// Get Input data from query string
-$edit = false;
-if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
-    $car_id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-    $edit = true;
+$car_id = $_GET['id'] ?? 0;
+
+if ($car_id <= 0) {
+    header('Location: cars.php');
+    exit();
 }
 
-// Serve POST method, After successful insert
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Mass Insert Data.  Escape the string to prevent mysql injection
-    $data_to_db = array_filter($_POST);
-    foreach ($_POST as $key => $value) {
-        $data_to_db[$key] = filter_var($value, FILTER_SANITIZE_STRING);
-    }
+// Get car details
+$query = "SELECT * FROM cars WHERE id = ?";
+$stmt = $db->prepare($query);
+$stmt->execute([$car_id]);
+$car = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Get the absolute path for uploads
-    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/rentacar/uploads/cars/';
-    $web_path = '/rentacar/uploads/cars/';
+if (!$car) {
+    $_SESSION['error'] = "Car not found";
+    header('Location: cars.php');
+    exit();
+}
 
-    // Create upload directory if it doesn't exist
+// Handle form submission
+if ($_POST) {
+    $category_id = $_POST['category_id'] ?? null;
+    $brand = $_POST['brand'];
+    $model = $_POST['model'];
+    $year = $_POST['year'];
+    $transmission = $_POST['transmission'];
+    $fuel_type = $_POST['fuel_type'];
+    $price_per_day = $_POST['price_per_day'];
+    $availability = isset($_POST['status']) && $_POST['status'] == 'available' ? 1 : 0;
+    
+    // Set up upload directory
+    $upload_dir = '../uploads/cars/';
     if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-        chmod($upload_dir, 0755);
+        mkdir($upload_dir, 0777, true);
     }
-
+    
     // Handle primary image
-    $primary_image = '';
+    $primary_image = $car['image']; // Keep existing image
     if (isset($_FILES['primary_image']) && $_FILES['primary_image']['size'] > 0) {
-        $file_extension = pathinfo($_FILES['primary_image']['name'], PATHINFO_EXTENSION);
-        $file_name = time() . '_primary.' . $file_extension;
+        $file_name = time() . '_' . $_FILES['primary_image']['name'];
         $target_file = $upload_dir . $file_name;
         
         if (move_uploaded_file($_FILES['primary_image']['tmp_name'], $target_file)) {
-            $primary_image = $web_path . $file_name;
-            $data_to_db['image'] = $primary_image;
+            $primary_image = 'uploads/cars/' . $file_name;
         }
     }
-
-    $db = getDbInstance();
-    if ($edit) {
-        $car_id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-        $db->where('id', $car_id);
-        $stat = $db->update('cars', $data_to_db);
-
-        if ($stat) {
-            $_SESSION['success'] = "Car updated successfully!";
-            header('location: cars.php');
-            exit;
-        } else {
-            $_SESSION['failure'] = "Failed to update car: " . $db->getLastError();
-            header('location: cars.php');
-            exit;
-        }
-    } else {
-        $last_id = $db->insert('cars', $data_to_db);
-
-        if ($last_id) {
-            $_SESSION['success'] = "Car added successfully!";
-            header('location: cars.php');
-            exit;
-        } else {
-            $_SESSION['failure'] = "Failed to add car: " . $db->getLastError();
-            header('location: cars.php');
-            exit;
-        }
-    }
-}
-
-// If edit variable is set, we are performing the update operation.
-if ($edit) {
-    $db = getDbInstance();
-    $db->where('id', $car_id);
-    $car = $db->getOne('cars');
-} else {
-    $car = array(
-        'make' => '',
-        'model' => '',
-        'year' => '',
-        'color' => '',
-        'registration_number' => '',
-        'rental_price' => '',
-        'availability' => '',
-        'image' => ''
-    );
-}
-
-// We are using same form for adding and updating.
-// Check for edit variable.
-?>
-<?php include_once '../includes/header.php'; ?>
-<div id="page-wrapper">
-    <div class="row">
-        <div class="col-lg-12">
-            <h2 class="page-header"><?php echo $edit ? "Update Car" : "Add Car"; ?></h2>
-        </div>
-    </div>
-    <!-- Flash messages -->
-    <?php include('../includes/flash_messages.php') ?>
-    <form class="form" action="" method="post" enctype="multipart/form-data" id="car_form">
-        <fieldset>
-            <div class="form-group">
-                <label for="make">Make *</label>
-                <input type="text" name="make" value="<?php echo htmlspecialchars($car['make']); ?>" placeholder="Make" class="form-control" required="required" id="make">
-            </div>
-
-            <div class="form-group">
-                <label for="model">Model *</label>
-                <input type="text" name="model" value="<?php echo htmlspecialchars($car['model']); ?>" placeholder="Model" class="form-control" required="required" id="model">
-            </div>
-
-            <div class="form-group">
-                <label for="year">Year *</label>
-                <input type="number" name="year" value="<?php echo htmlspecialchars($car['year']); ?>" placeholder="Year" class="form-control" required="required" id="year">
-            </div>
-
-            <div class="form-group">
-                <label for="color">Color *</label>
-                <input type="text" name="color" value="<?php echo htmlspecialchars($car['color']); ?>" placeholder="Color" class="form-control" required="required" id="color">
-            </div>
-
-            <div class="form-group">
-                <label for="registration_number">Registration Number *</label>
-                <input type="text" name="registration_number" value="<?php echo htmlspecialchars($car['registration_number']); ?>" placeholder="Registration Number" class="form-control" required="required" id="registration_number">
-            </div>
-
-            <div class="form-group">
-                <label for="rental_price">Rental Price *</label>
-                <input type="number" name="rental_price" value="<?php echo htmlspecialchars($car['rental_price']); ?>" placeholder="Rental Price" class="form-control" required="required" id="rental_price">
-            </div>
-
-            <div class="form-group">
-                <label for="availability">Availability *</label>
-                <select name="availability" class="form-control" required="required" id="availability">
-                    <option value="available" <?php echo ($car['availability'] == 'available') ? "selected" : ""; ?>>Available</option>
-                    <option value="unavailable" <?php echo ($car['availability'] == 'unavailable') ? "selected" : ""; ?>>Unavailable</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="primary_image">Primary Image</label>
-                <input type="file" name="primary_image" id="primary_image">
-                <?php if ($edit && $car['image']): ?>
-                    <img src="<?php echo htmlspecialchars($car['image']); ?>" alt="Current Image" style="max-width: 200px; max-height: 200px;">
-                <?php endif; ?>
-            </div>
-
-            <div class="form-group text-center">
-                <label></label>
-                <button type="submit" class="btn btn-warning">Save <span class="glyphicon glyphicon-send"></span></button>
-            </div>
-        </fieldset>
-    </form>
-</div>
-
-<script>
-    $(document).ready(function() {
-        $('#car_form').validate({
-            rules: {
-                make: {
-                    required: true,
-                    minlength: 3
-                },
-                model: {
-                    required: true,
-                    minlength: 3
-                },
-                year: {
-                    required: true,
-                    digits: true,
-                    minlength: 4,
-                    maxlength: 4
-                },
-                color: {
-                    required: true,
-                    minlength: 3
-                },
-                registration_number: {
-                    required: true,
-                    minlength: 3
-                },
-                rental_price: {
-                    required: true,
-                    number: true
-                },
-                availability: {
-                    required: true
+    
+    // Handle additional images
+    $existing_images = json_decode($car['images'], true) ?: [];
+    $additional_images = $existing_images;
+    
+    if (isset($_FILES['additional_images'])) {
+        foreach ($_FILES['additional_images']['name'] as $key => $name) {
+            if ($_FILES['additional_images']['size'][$key] > 0) {
+                $file_name = time() . '_' . $key . '_' . $name;
+                $target_file = $upload_dir . $file_name;
+                
+                if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], $target_file)) {
+                    $additional_images[] = 'uploads/cars/' . $file_name;
                 }
             }
-        });
-    });
-</script>
+        }
+    }
+    
+    $images_json = json_encode($additional_images);
+    
+    // Update database
+    try {
+        $query = "UPDATE cars SET brand=?, model=?, year=?, transmission=?, fuel_type=?, price_per_day=?, availability=?, image=?, images=? WHERE id=?";
+        $stmt = $db->prepare($query);
+        $result = $stmt->execute([$brand, $model, $year, $transmission, $fuel_type, $price_per_day, $availability, $primary_image, $images_json, $car_id]);
+        
+        if ($result) {
+            $_SESSION['success'] = "Car updated successfully!";
+            header('Location: cars.php');
+            exit();
+        } else {
+            $_SESSION['error'] = "Failed to update car";
+        }
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Error: " . $e->getMessage();
+    }
+}
 
-<?php include_once '../includes/footer.php'; ?>
+// Get categories for dropdown
+try {
+    $categories_query = "SELECT id, name FROM car_categories ORDER BY name";
+    $categories_stmt = $db->prepare($categories_query);
+    $categories_stmt->execute();
+    $categories = $categories_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $categories = [];
+}
+
+include_once 'includes/header.php';
+?>
+
+<div class="container-fluid py-4">
+    <h1>Edit Car</h1>
+    
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger">
+            <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+        </div>
+    <?php endif; ?>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" name="category_id">
+                                    <option value="">Select Category</option>
+                                    <?php foreach ($categories as $category): ?>
+                                        <option value="<?= $category['id'] ?>" <?= ($car['category_id'] == $category['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($category['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Brand</label>
+                                <input type="text" class="form-control" name="brand" value="<?= htmlspecialchars($car['brand']) ?>" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Model</label>
+                                <input type="text" class="form-control" name="model" value="<?= htmlspecialchars($car['model']) ?>" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Year</label>
+                                <input type="number" class="form-control" name="year" value="<?= htmlspecialchars($car['year']) ?>" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Transmission</label>
+                                <select class="form-select" name="transmission" required>
+                                    <option value="automatic" <?= ($car['transmission'] == 'automatic') ? 'selected' : '' ?>>Automatic</option>
+                                    <option value="manual" <?= ($car['transmission'] == 'manual') ? 'selected' : '' ?>>Manual</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Fuel Type</label>
+                                <select class="form-select" name="fuel_type" required>
+                                    <option value="petrol" <?= ($car['fuel_type'] == 'petrol') ? 'selected' : '' ?>>Petrol</option>
+                                    <option value="diesel" <?= ($car['fuel_type'] == 'diesel') ? 'selected' : '' ?>>Diesel</option>
+                                    <option value="electric" <?= ($car['fuel_type'] == 'electric') ? 'selected' : '' ?>>Electric</option>
+                                    <option value="hybrid" <?= ($car['fuel_type'] == 'hybrid') ? 'selected' : '' ?>>Hybrid</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Price Per Day ($)</label>
+                                <input type="number" class="form-control" name="price_per_day" value="<?= htmlspecialchars($car['price_per_day']) ?>" step="0.01" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status" required>
+                                <option value="available" <?= ($car['availability'] == 1) ? 'selected' : '' ?>>Available</option>
+                                <option value="unavailable" <?= ($car['availability'] == 0) ? 'selected' : '' ?>>Unavailable</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Primary Image</label>
+                            <?php if (!empty($car['image'])): ?>
+                                <div class="mb-2">
+                                    <img src="../<?= htmlspecialchars($car['image']) ?>" style="max-height: 100px;" alt="Current image">
+                                    <p class="text-muted small">Current image</p>
+                                </div>
+                            <?php endif; ?>
+                            <input type="file" class="form-control" name="primary_image" accept="image/*">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Additional Images</label>
+                            <?php 
+                            if (!empty($car['images'])) {
+                                $images = json_decode($car['images'], true);
+                                if (is_array($images) && count($images) > 0): ?>
+                                    <div class="mb-2">
+                                        <?php foreach ($images as $image): ?>
+                                            <img src="../<?= htmlspecialchars($image) ?>" style="max-height: 80px; margin-right: 5px;" alt="Additional image">
+                                        <?php endforeach; ?>
+                                        <p class="text-muted small">Current additional images</p>
+                                    </div>
+                                <?php endif;
+                            } ?>
+                            <input type="file" class="form-control" name="additional_images[]" accept="image/*" multiple>
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="cars.php" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Update Car</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include_once 'includes/footer.php'; ?>
