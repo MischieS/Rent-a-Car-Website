@@ -1,6 +1,10 @@
 <?php
 session_start();
-include('../includes/config.php');
+require_once '../config/database.php';
+
+// Create database connection
+$database = new Database();
+$db = $database->getConnection();
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_login'])) {
@@ -9,124 +13,125 @@ if (!isset($_SESSION['admin_login'])) {
 }
 
 // Handle form submission
-if (isset($_POST['add'])) {
-    $car_title = $_POST['car_title'];
-    $car_brand = $_POST['car_brand'];
-    $car_overview = $_POST['car_overview'];
-    $price_per_day = $_POST['price_per_day'];
-    $fuel_type = $_POST['fuel_type'];
-    $model_year = $_POST['model_year'];
-    $seating_capacity = $_POST['seating_capacity'];
-    $vhl_number = $_POST['vhl_number'];
-
-    // Amenities
-    $air_conditioner = isset($_POST['air_conditioner']) ? 1 : 0;
-    $power_door_locks = isset($_POST['power_door_locks']) ? 1 : 0;
-    $anti_lock_braking_system = isset($_POST['anti_lock_braking_system']) ? 1 : 0;
-    $brake_assist = isset($_POST['brake_assist']) ? 1 : 0;
-    $power_steering = isset($_POST['power_steering']) ? 1 : 0;
-    $driver_airbag = isset($_POST['driver_airbag']) ? 1 : 0;
-    $passenger_airbag = isset($_POST['passenger_airbag']) ? 1 : 0;
-    $power_windows = isset($_POST['power_windows']) ? 1 : 0;
-    $cd_player = isset($_POST['cd_player']) ? 1 : 0;
-    $central_locking = isset($_POST['central_locking']) ? 1 : 0;
-    $crash_sensor = isset($_POST['crash_sensor']) ? 1 : 0;
-    $leather_seats = isset($_POST['leather_seats']) ? 1 : 0;
-
-    // Get the absolute path for uploads
-    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/rentacar/uploads/cars/';
-    $web_path = '/rentacar/uploads/cars/';
-
-    // Create upload directory if it doesn't exist
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-        chmod($upload_dir, 0755);
-    }
-
-    // Debug: Check if directory is writable
-    if (!is_writable($upload_dir)) {
-        $_SESSION['error'] = "Upload directory is not writable: " . $upload_dir;
-    }
-
-    // Handle primary image
-    $primary_image = '';
-    if (isset($_FILES['primary_image']) && $_FILES['primary_image']['size'] > 0) {
-        $file_extension = pathinfo($_FILES['primary_image']['name'], PATHINFO_EXTENSION);
-        $file_name = time() . '_primary.' . $file_extension;
-        $target_file = $upload_dir . $file_name;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        // Get form data
+        $car_title = $_POST['car_title'];
+        $car_brand = $_POST['car_brand'];
+        $car_overview = $_POST['car_overview'];
+        $price_per_day = $_POST['price_per_day'];
+        $fuel_type = $_POST['fuel_type'];
+        $model_year = $_POST['model_year'];
+        $seating_capacity = $_POST['seating_capacity'];
+        $vhl_number = $_POST['vhl_number'];
+        $transmission = $_POST['transmission'];
+        $availability = isset($_POST['status']) && $_POST['status'] == 'available' ? 1 : 0;
         
-        // Debug output
-        error_log("Uploading to: " . $target_file);
-        error_log("File size: " . $_FILES['primary_image']['size']);
-        error_log("File error: " . $_FILES['primary_image']['error']);
+        // Amenities
+        $air_conditioner = isset($_POST['air_conditioner']) ? 1 : 0;
+        $power_door_locks = isset($_POST['power_door_locks']) ? 1 : 0;
+        $anti_lock_braking_system = isset($_POST['anti_lock_braking_system']) ? 1 : 0;
+        $brake_assist = isset($_POST['brake_assist']) ? 1 : 0;
+        $power_steering = isset($_POST['power_steering']) ? 1 : 0;
+        $driver_airbag = isset($_POST['driver_airbag']) ? 1 : 0;
+        $passenger_airbag = isset($_POST['passenger_airbag']) ? 1 : 0;
+        $power_windows = isset($_POST['power_windows']) ? 1 : 0;
+        $cd_player = isset($_POST['cd_player']) ? 1 : 0;
+        $central_locking = isset($_POST['central_locking']) ? 1 : 0;
+        $crash_sensor = isset($_POST['crash_sensor']) ? 1 : 0;
+        $leather_seats = isset($_POST['leather_seats']) ? 1 : 0;
         
-        if (move_uploaded_file($_FILES['primary_image']['tmp_name'], $target_file)) {
-            $primary_image = $web_path . $file_name;
-            $_SESSION['success'] = "Primary image uploaded successfully!";
-        } else {
-            $_SESSION['error'] = "Failed to upload primary image. Check permissions.";
+        // Set up upload directory
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/rentacar/uploads/cars/';
+        $web_path = '/rentacar/uploads/cars/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
         }
-    }
-
-    // Handle additional images (up to 5)
-    $additional_images = array();
-    for ($i = 1; $i <= 5; $i++) {
-        $image_field = 'image' . $i;
-        if (isset($_FILES[$image_field]) && $_FILES[$image_field]['size'] > 0) {
-            $file_extension = pathinfo($_FILES[$image_field]['name'], PATHINFO_EXTENSION);
-            $file_name = time() . '_' . $i . '.' . $file_extension;
+        
+        // Handle primary image
+        $primary_image = 'assets/img/cars/default-car.png'; // Default image
+        if (isset($_FILES['primary_image']) && $_FILES['primary_image']['size'] > 0) {
+            $file_name = time() . '_' . basename($_FILES['primary_image']['name']);
             $target_file = $upload_dir . $file_name;
-
-            if (move_uploaded_file($_FILES[$image_field]['tmp_name'], $target_file)) {
-                $additional_images[] = $web_path . $file_name;
-                $_SESSION['success'] .= "<br>Image " . $i . " uploaded successfully!";
+            
+            if (move_uploaded_file($_FILES['primary_image']['tmp_name'], $target_file)) {
+                $primary_image = $web_path . $file_name;
             } else {
-                $_SESSION['error'] .= "<br>Failed to upload image " . $i . ". Check permissions.";
+                $_SESSION['warning'] = "Failed to upload image. Using default image.";
             }
         }
-    }
+        
+        // Handle additional images (up to 5)
+        $additional_images = array();
+        for ($i = 1; $i <= 5; $i++) {
+            $image_field = 'image' . $i;
+            if (isset($_FILES[$image_field]) && $_FILES[$image_field]['size'] > 0) {
+                $file_extension = pathinfo($_FILES[$image_field]['name'], PATHINFO_EXTENSION);
+                $file_name = time() . '_' . $i . '.' . $file_extension;
+                $target_file = $upload_dir . $file_name;
 
-    // Convert additional images array to a comma-separated string
-    $additional_images_str = implode(',', $additional_images);
+                if (move_uploaded_file($_FILES[$image_field]['tmp_name'], $target_file)) {
+                    $additional_images[] = $web_path . $file_name;
+                    $_SESSION['success'] .= "<br>Image " . $i . " uploaded successfully!";
+                } else {
+                    $_SESSION['error'] .= "<br>Failed to upload image " . $i . ". Check permissions.";
+                }
+            }
+        }
 
-    // Insert data into the database
-    $sql = "INSERT INTO tblvehicles (VehiclesTitle, VehiclesBrand, VehiclesOverview, PricePerDay, FuelType, ModelYear, SeatingCapacity, VhlNumber, Vimage1, Vimage2, Vimage3, Vimage4, Vimage5, AirConditioner, PowerDoorLocks, AntiLockBrakingSystem, BrakeAssist, PowerSteering, DriverAirbag, PassengerAirbag, PowerWindows, CDPlayer, CentralLocking, CrashSensor, LeatherSeats) 
-            VALUES (:car_title, :car_brand, :car_overview, :price_per_day, :fuel_type, :model_year, :seating_capacity, :vhl_number, :primary_image, :image2, :image3, :image4, :image5, :air_conditioner, :power_door_locks, :anti_lock_braking_system, :brake_assist, :power_steering, :driver_airbag, :passenger_airbag, :power_windows, :cd_player, :central_locking, :crash_sensor, :leather_seats)";
-    $query = $dbh->prepare($sql);
-    $query->bindParam(':car_title', $car_title, PDO::PARAM_STR);
-    $query->bindParam(':car_brand', $car_brand, PDO::PARAM_STR);
-    $query->bindParam(':car_overview', $car_overview, PDO::PARAM_STR);
-    $query->bindParam(':price_per_day', $price_per_day, PDO::PARAM_STR);
-    $query->bindParam(':fuel_type', $fuel_type, PDO::PARAM_STR);
-    $query->bindParam(':model_year', $model_year, PDO::PARAM_STR);
-    $query->bindParam(':seating_capacity', $seating_capacity, PDO::PARAM_STR);
-    $query->bindParam(':vhl_number', $vhl_number, PDO::PARAM_STR);
-    $query->bindParam(':primary_image', $primary_image, PDO::PARAM_STR);
-    $query->bindParam(':image2', isset($additional_images[0]) ? $additional_images[0] : '', PDO::PARAM_STR);
-    $query->bindParam(':image3', isset($additional_images[1]) ? $additional_images[1] : '', PDO::PARAM_STR);
-    $query->bindParam(':image4', isset($additional_images[2]) ? $additional_images[2] : '', PDO::PARAM_STR);
-    $query->bindParam(':image5', isset($additional_images[3]) ? $additional_images[3] : '', PDO::PARAM_STR);
-    $query->bindParam(':air_conditioner', $air_conditioner, PDO::PARAM_INT);
-    $query->bindParam(':power_door_locks', $power_door_locks, PDO::PARAM_INT);
-    $query->bindParam(':anti_lock_braking_system', $anti_lock_braking_system, PDO::PARAM_INT);
-    $query->bindParam(':brake_assist', $brake_assist, PDO::PARAM_INT);
-    $query->bindParam(':power_steering', $power_steering, PDO::PARAM_INT);
-    $query->bindParam(':driver_airbag', $driver_airbag, PDO::PARAM_INT);
-    $query->bindParam(':passenger_airbag', $passenger_airbag, PDO::PARAM_INT);
-    $query->bindParam(':power_windows', $power_windows, PDO::PARAM_INT);
-    $query->bindParam(':cd_player', $cd_player, PDO::PARAM_INT);
-    $query->bindParam(':central_locking', $central_locking, PDO::PARAM_INT);
-    $query->bindParam(':crash_sensor', $crash_sensor, PDO::PARAM_INT);
-    $query->bindParam(':leather_seats', $leather_seats, PDO::PARAM_INT);
+        // Convert additional images array to a comma-separated string
+        $additional_images_str = implode(',', $additional_images);
 
-    if ($query->execute()) {
-        $_SESSION['success'] .= "<br>Car added successfully!";
-        header('location:car-manage.php');
-        exit();
-    } else {
-        $_SESSION['error'] = "Failed to add car. Please try again.";
+        // Insert into database
+        $query = "INSERT INTO tblvehicles (VehiclesTitle, VehiclesBrand, VehiclesOverview, PricePerDay, FuelType, ModelYear, SeatingCapacity, VhlNumber, Vimage1, Vimage2, Vimage3, Vimage4, Vimage5, AirConditioner, PowerDoorLocks, AntiLockBrakingSystem, BrakeAssist, PowerSteering, DriverAirbag, PassengerAirbag, PowerWindows, CDPlayer, CentralLocking, CrashSensor, LeatherSeats, Transmission, Availability) 
+                  VALUES (:car_title, :car_brand, :car_overview, :price_per_day, :fuel_type, :model_year, :seating_capacity, :vhl_number, :primary_image, :image2, :image3, :image4, :image5, :air_conditioner, :power_door_locks, :anti_lock_braking_system, :brake_assist, :power_steering, :driver_airbag, :passenger_airbag, :power_windows, :cd_player, :central_locking, :crash_sensor, :leather_seats, :transmission, :availability)";
+                  
+        $stmt = $db->prepare($query);
+        $result = $stmt->execute([
+            $car_title, 
+            $car_brand, 
+            $car_overview, 
+            $price_per_day, 
+            $fuel_type, 
+            $model_year, 
+            $seating_capacity, 
+            $vhl_number, 
+            $primary_image, 
+            isset($additional_images[0]) ? $additional_images[0] : '', 
+            isset($additional_images[1]) ? $additional_images[1] : '', 
+            isset($additional_images[2]) ? $additional_images[2] : '', 
+            isset($additional_images[3]) ? $additional_images[3] : '', 
+            isset($additional_images[4]) ? $additional_images[4] : '', 
+            $air_conditioner, 
+            $power_door_locks, 
+            $anti_lock_braking_system, 
+            $brake_assist, 
+            $power_steering, 
+            $driver_airbag, 
+            $passenger_airbag, 
+            $power_windows, 
+            $cd_player, 
+            $central_locking, 
+            $crash_sensor, 
+            $leather_seats, 
+            $transmission, 
+            $availability
+        ]);
+        
+        if ($result) {
+            $_SESSION['success'] .= "<br>Car added successfully!";
+            header('Location: car-manage.php');
+            exit();
+        } else {
+            $_SESSION['error'] = "Failed to add car";
+        }
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Error: " . $e->getMessage();
     }
 }
+
+// Include header
+include('includes/header.php');
 ?>
 
 <!DOCTYPE html>
@@ -150,7 +155,6 @@ if (isset($_POST['add'])) {
 </head>
 
 <body>
-    <?php include('includes/header.php'); ?>
     <div class="container mt-5">
         <h2>Add New Car</h2>
         <?php if (isset($_SESSION['error'])) { ?>
@@ -159,23 +163,18 @@ if (isset($_POST['add'])) {
                 unset($_SESSION['error']); ?>
             </div>
         <?php } ?>
+        <?php if (isset($_SESSION['warning'])) { ?>
+            <div class="alert alert-warning">
+                <?php echo $_SESSION['warning'];
+                unset($_SESSION['warning']); ?>
+            </div>
+        <?php } ?>
         <?php if (isset($_SESSION['success'])) { ?>
             <div class="alert alert-success">
                 <?php echo $_SESSION['success'];
                 unset($_SESSION['success']); ?>
             </div>
         <?php } ?>
-
-        <?php
-        // Add this after the database connection
-        echo "<div class='alert alert-info'>";
-        echo "Upload directory: " . $upload_dir . "<br>";
-        echo "Directory exists: " . (is_dir($upload_dir) ? 'Yes' : 'No') . "<br>";
-        echo "Directory writable: " . (is_writable($upload_dir) ? 'Yes' : 'No') . "<br>";
-        echo "PHP upload_max_filesize: " . ini_get('upload_max_filesize') . "<br>";
-        echo "PHP post_max_size: " . ini_get('post_max_size') . "<br>";
-        echo "</div>";
-        ?>
 
         <form method="post" enctype="multipart/form-data">
             <div class="form-group">
@@ -216,13 +215,28 @@ if (isset($_POST['add'])) {
                 <input type="text" class="form-control" id="vhl_number" name="vhl_number" required>
             </div>
             <div class="form-group">
+                <label for="transmission">Transmission</label>
+                <select class="form-control" id="transmission" name="transmission" required>
+                    <option value="automatic">Automatic</option>
+                    <option value="manual">Manual</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select class="form-control" id="status" name="status" required>
+                    <option value="available">Available</option>
+                    <option value="unavailable">Unavailable</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="primary_image">Primary Image</label>
-                <input type="file" class="form-control-file" id="primary_image" name="primary_image" required>
+                <input type="file" class="form-control-file" id="primary_image" name="primary_image" accept="image/*">
+                <small class="text-muted">If no image is selected, a default image will be used.</small>
             </div>
             <?php for ($i = 1; $i <= 5; $i++) { ?>
                 <div class="form-group">
                     <label for="image<?php echo $i; ?>">Image <?php echo $i; ?></label>
-                    <input type="file" class="form-control-file" id="image<?php echo $i; ?>" name="image<?php echo $i; ?>">
+                    <input type="file" class="form-control-file" id="image<?php echo $i; ?>" name="image<?php echo $i; ?>" accept="image/*">
                 </div>
             <?php } ?>
 
@@ -278,7 +292,10 @@ if (isset($_POST['add'])) {
                 </div>
             </div>
 
-            <button type="submit" name="add" class="btn btn-primary">Add Car</button>
+            <div class="text-end">
+                <a href="car-manage.php" class="btn btn-secondary me-2">Cancel</a>
+                <button type="submit" name="add" class="btn btn-primary">Add Car</button>
+            </div>
         </form>
     </div>
     <?php include('includes/footer.php'); ?>
