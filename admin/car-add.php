@@ -1,160 +1,291 @@
 <?php
 session_start();
-require_once '../config/database.php';
+include('../includes/config.php');
 
-$database = new Database();
-$db = $database->getConnection();
-
-// Simple upload directory
-$upload_dir = '../uploads/cars/';
-if (!is_dir($upload_dir)) {
-    mkdir($upload_dir, 0777, true);
-}
-
-if ($_POST) {
-    $category_id = $_POST['category_id'];
-    $brand = $_POST['brand'];
-    $model = $_POST['model'];
-    $year = $_POST['year'];
-    $transmission = $_POST['transmission'];
-    $fuel_type = $_POST['fuel_type'];
-    $price_per_day = $_POST['price_per_day'];
-    $availability = isset($_POST['status']) && $_POST['status'] == 'available' ? 1 : 0;
-    
-    // Handle primary image
-    $primary_image = '';
-    if ($_FILES['primary_image']['size'] > 0) {
-        $file_name = time() . '_' . $_FILES['primary_image']['name'];
-        $target_file = $upload_dir . $file_name;
-        
-        if (move_uploaded_file($_FILES['primary_image']['tmp_name'], $target_file)) {
-            $primary_image = 'uploads/cars/' . $file_name;
-        }
-    }
-    
-    // Handle additional images
-    $additional_images = [];
-    if (isset($_FILES['additional_images'])) {
-        foreach ($_FILES['additional_images']['name'] as $key => $name) {
-            if ($_FILES['additional_images']['size'][$key] > 0) {
-                $file_name = time() . '_' . $key . '_' . $name;
-                $target_file = $upload_dir . $file_name;
-                
-                if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], $target_file)) {
-                    $additional_images[] = 'uploads/cars/' . $file_name;
-                }
-            }
-        }
-    }
-    
-    $images_json = json_encode($additional_images);
-    
-    // Insert into database
-    $query = "INSERT INTO cars (category_id, brand, model, year, transmission, fuel_type, price_per_day, availability, image, images) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    
-    $stmt = $db->prepare($query);
-    $stmt->execute([$category_id, $brand, $model, $year, $transmission, $fuel_type, $price_per_day, $availability, $primary_image, $images_json]);
-    
-    $_SESSION['success'] = "Car added successfully!";
-    header('Location: cars.php');
+// Check if admin is logged in
+if (!isset($_SESSION['admin_login'])) {
+    header('location:index.php');
     exit();
 }
 
-// Get categories for dropdown
-$categories_query = "SELECT id, name FROM car_categories ORDER BY name";
-$categories_stmt = $db->prepare($categories_query);
-$categories_stmt->execute();
-$categories = $categories_stmt->fetchAll(PDO::FETCH_ASSOC);
+// Handle form submission
+if (isset($_POST['add'])) {
+    $car_title = $_POST['car_title'];
+    $car_brand = $_POST['car_brand'];
+    $car_overview = $_POST['car_overview'];
+    $price_per_day = $_POST['price_per_day'];
+    $fuel_type = $_POST['fuel_type'];
+    $model_year = $_POST['model_year'];
+    $seating_capacity = $_POST['seating_capacity'];
+    $vhl_number = $_POST['vhl_number'];
 
-include_once 'includes/header.php';
+    // Amenities
+    $air_conditioner = isset($_POST['air_conditioner']) ? 1 : 0;
+    $power_door_locks = isset($_POST['power_door_locks']) ? 1 : 0;
+    $anti_lock_braking_system = isset($_POST['anti_lock_braking_system']) ? 1 : 0;
+    $brake_assist = isset($_POST['brake_assist']) ? 1 : 0;
+    $power_steering = isset($_POST['power_steering']) ? 1 : 0;
+    $driver_airbag = isset($_POST['driver_airbag']) ? 1 : 0;
+    $passenger_airbag = isset($_POST['passenger_airbag']) ? 1 : 0;
+    $power_windows = isset($_POST['power_windows']) ? 1 : 0;
+    $cd_player = isset($_POST['cd_player']) ? 1 : 0;
+    $central_locking = isset($_POST['central_locking']) ? 1 : 0;
+    $crash_sensor = isset($_POST['crash_sensor']) ? 1 : 0;
+    $leather_seats = isset($_POST['leather_seats']) ? 1 : 0;
+
+    // Get the absolute path for uploads
+    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/rentacar/uploads/cars/';
+    $web_path = '/rentacar/uploads/cars/';
+
+    // Create upload directory if it doesn't exist
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+        chmod($upload_dir, 0755);
+    }
+
+    // Debug: Check if directory is writable
+    if (!is_writable($upload_dir)) {
+        $_SESSION['error'] = "Upload directory is not writable: " . $upload_dir;
+    }
+
+    // Handle primary image
+    $primary_image = '';
+    if (isset($_FILES['primary_image']) && $_FILES['primary_image']['size'] > 0) {
+        $file_extension = pathinfo($_FILES['primary_image']['name'], PATHINFO_EXTENSION);
+        $file_name = time() . '_primary.' . $file_extension;
+        $target_file = $upload_dir . $file_name;
+        
+        // Debug output
+        error_log("Uploading to: " . $target_file);
+        error_log("File size: " . $_FILES['primary_image']['size']);
+        error_log("File error: " . $_FILES['primary_image']['error']);
+        
+        if (move_uploaded_file($_FILES['primary_image']['tmp_name'], $target_file)) {
+            $primary_image = $web_path . $file_name;
+            $_SESSION['success'] = "Primary image uploaded successfully!";
+        } else {
+            $_SESSION['error'] = "Failed to upload primary image. Check permissions.";
+        }
+    }
+
+    // Handle additional images (up to 5)
+    $additional_images = array();
+    for ($i = 1; $i <= 5; $i++) {
+        $image_field = 'image' . $i;
+        if (isset($_FILES[$image_field]) && $_FILES[$image_field]['size'] > 0) {
+            $file_extension = pathinfo($_FILES[$image_field]['name'], PATHINFO_EXTENSION);
+            $file_name = time() . '_' . $i . '.' . $file_extension;
+            $target_file = $upload_dir . $file_name;
+
+            if (move_uploaded_file($_FILES[$image_field]['tmp_name'], $target_file)) {
+                $additional_images[] = $web_path . $file_name;
+                $_SESSION['success'] .= "<br>Image " . $i . " uploaded successfully!";
+            } else {
+                $_SESSION['error'] .= "<br>Failed to upload image " . $i . ". Check permissions.";
+            }
+        }
+    }
+
+    // Convert additional images array to a comma-separated string
+    $additional_images_str = implode(',', $additional_images);
+
+    // Insert data into the database
+    $sql = "INSERT INTO tblvehicles (VehiclesTitle, VehiclesBrand, VehiclesOverview, PricePerDay, FuelType, ModelYear, SeatingCapacity, VhlNumber, Vimage1, Vimage2, Vimage3, Vimage4, Vimage5, AirConditioner, PowerDoorLocks, AntiLockBrakingSystem, BrakeAssist, PowerSteering, DriverAirbag, PassengerAirbag, PowerWindows, CDPlayer, CentralLocking, CrashSensor, LeatherSeats) 
+            VALUES (:car_title, :car_brand, :car_overview, :price_per_day, :fuel_type, :model_year, :seating_capacity, :vhl_number, :primary_image, :image2, :image3, :image4, :image5, :air_conditioner, :power_door_locks, :anti_lock_braking_system, :brake_assist, :power_steering, :driver_airbag, :passenger_airbag, :power_windows, :cd_player, :central_locking, :crash_sensor, :leather_seats)";
+    $query = $dbh->prepare($sql);
+    $query->bindParam(':car_title', $car_title, PDO::PARAM_STR);
+    $query->bindParam(':car_brand', $car_brand, PDO::PARAM_STR);
+    $query->bindParam(':car_overview', $car_overview, PDO::PARAM_STR);
+    $query->bindParam(':price_per_day', $price_per_day, PDO::PARAM_STR);
+    $query->bindParam(':fuel_type', $fuel_type, PDO::PARAM_STR);
+    $query->bindParam(':model_year', $model_year, PDO::PARAM_STR);
+    $query->bindParam(':seating_capacity', $seating_capacity, PDO::PARAM_STR);
+    $query->bindParam(':vhl_number', $vhl_number, PDO::PARAM_STR);
+    $query->bindParam(':primary_image', $primary_image, PDO::PARAM_STR);
+    $query->bindParam(':image2', isset($additional_images[0]) ? $additional_images[0] : '', PDO::PARAM_STR);
+    $query->bindParam(':image3', isset($additional_images[1]) ? $additional_images[1] : '', PDO::PARAM_STR);
+    $query->bindParam(':image4', isset($additional_images[2]) ? $additional_images[2] : '', PDO::PARAM_STR);
+    $query->bindParam(':image5', isset($additional_images[3]) ? $additional_images[3] : '', PDO::PARAM_STR);
+    $query->bindParam(':air_conditioner', $air_conditioner, PDO::PARAM_INT);
+    $query->bindParam(':power_door_locks', $power_door_locks, PDO::PARAM_INT);
+    $query->bindParam(':anti_lock_braking_system', $anti_lock_braking_system, PDO::PARAM_INT);
+    $query->bindParam(':brake_assist', $brake_assist, PDO::PARAM_INT);
+    $query->bindParam(':power_steering', $power_steering, PDO::PARAM_INT);
+    $query->bindParam(':driver_airbag', $driver_airbag, PDO::PARAM_INT);
+    $query->bindParam(':passenger_airbag', $passenger_airbag, PDO::PARAM_INT);
+    $query->bindParam(':power_windows', $power_windows, PDO::PARAM_INT);
+    $query->bindParam(':cd_player', $cd_player, PDO::PARAM_INT);
+    $query->bindParam(':central_locking', $central_locking, PDO::PARAM_INT);
+    $query->bindParam(':crash_sensor', $crash_sensor, PDO::PARAM_INT);
+    $query->bindParam(':leather_seats', $leather_seats, PDO::PARAM_INT);
+
+    if ($query->execute()) {
+        $_SESSION['success'] .= "<br>Car added successfully!";
+        header('location:car-manage.php');
+        exit();
+    } else {
+        $_SESSION['error'] = "Failed to add car. Please try again.";
+    }
+}
 ?>
 
-<div class="container-fluid py-4">
-    <h1>Add New Car</h1>
-    
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Category</label>
-                                <select class="form-select" name="category_id" required>
-                                    <option value="">Select Category</option>
-                                    <?php foreach ($categories as $category): ?>
-                                        <option value="<?= $category['id'] ?>"><?= $category['name'] ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Brand</label>
-                                <input type="text" class="form-control" name="brand" required>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Model</label>
-                                <input type="text" class="form-control" name="model" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Year</label>
-                                <input type="number" class="form-control" name="year" min="2000" max="<?= date('Y') + 1 ?>" required>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Transmission</label>
-                                <select class="form-select" name="transmission" required>
-                                    <option value="automatic">Automatic</option>
-                                    <option value="manual">Manual</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Fuel Type</label>
-                                <select class="form-select" name="fuel_type" required>
-                                    <option value="petrol">Petrol</option>
-                                    <option value="diesel">Diesel</option>
-                                    <option value="electric">Electric</option>
-                                    <option value="hybrid">Hybrid</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Price Per Day ($)</label>
-                                <input type="number" class="form-control" name="price_per_day" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" name="status" required>
-                                <option value="available">Available</option>
-                                <option value="unavailable">Unavailable</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Primary Image</label>
-                            <input type="file" class="form-control" name="primary_image" accept="image/*" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Additional Images</label>
-                            <input type="file" class="form-control" name="additional_images[]" accept="image/*" multiple>
-                        </div>
-                        
-                        <div class="text-end">
-                            <a href="cars.php" class="btn btn-secondary me-2">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Add Car</button>
-                        </div>
-                    </form>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Car</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        .mt-6 {
+            margin-top: 4rem !important;
+        }
+    </style>
+</head>
+
+<body>
+    <?php include('includes/header.php'); ?>
+    <div class="container mt-5">
+        <h2>Add New Car</h2>
+        <?php if (isset($_SESSION['error'])) { ?>
+            <div class="alert alert-danger">
+                <?php echo $_SESSION['error'];
+                unset($_SESSION['error']); ?>
+            </div>
+        <?php } ?>
+        <?php if (isset($_SESSION['success'])) { ?>
+            <div class="alert alert-success">
+                <?php echo $_SESSION['success'];
+                unset($_SESSION['success']); ?>
+            </div>
+        <?php } ?>
+
+        <?php
+        // Add this after the database connection
+        echo "<div class='alert alert-info'>";
+        echo "Upload directory: " . $upload_dir . "<br>";
+        echo "Directory exists: " . (is_dir($upload_dir) ? 'Yes' : 'No') . "<br>";
+        echo "Directory writable: " . (is_writable($upload_dir) ? 'Yes' : 'No') . "<br>";
+        echo "PHP upload_max_filesize: " . ini_get('upload_max_filesize') . "<br>";
+        echo "PHP post_max_size: " . ini_get('post_max_size') . "<br>";
+        echo "</div>";
+        ?>
+
+        <form method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="car_title">Car Title</label>
+                <input type="text" class="form-control" id="car_title" name="car_title" required>
+            </div>
+            <div class="form-group">
+                <label for="car_brand">Car Brand</label>
+                <input type="text" class="form-control" id="car_brand" name="car_brand" required>
+            </div>
+            <div class="form-group">
+                <label for="car_overview">Car Overview</label>
+                <textarea class="form-control" id="car_overview" name="car_overview" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price_per_day">Price Per Day</label>
+                <input type="number" class="form-control" id="price_per_day" name="price_per_day" required>
+            </div>
+            <div class="form-group">
+                <label for="fuel_type">Fuel Type</label>
+                <select class="form-control" id="fuel_type" name="fuel_type" required>
+                    <option value="Petrol">Petrol</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Electric">Electric</option>
+                    <option value="Hybrid">Hybrid</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="model_year">Model Year</label>
+                <input type="number" class="form-control" id="model_year" name="model_year" required>
+            </div>
+            <div class="form-group">
+                <label for="seating_capacity">Seating Capacity</label>
+                <input type="number" class="form-control" id="seating_capacity" name="seating_capacity" required>
+            </div>
+            <div class="form-group">
+                <label for="vhl_number">Vehicle Number</label>
+                <input type="text" class="form-control" id="vhl_number" name="vhl_number" required>
+            </div>
+            <div class="form-group">
+                <label for="primary_image">Primary Image</label>
+                <input type="file" class="form-control-file" id="primary_image" name="primary_image" required>
+            </div>
+            <?php for ($i = 1; $i <= 5; $i++) { ?>
+                <div class="form-group">
+                    <label for="image<?php echo $i; ?>">Image <?php echo $i; ?></label>
+                    <input type="file" class="form-control-file" id="image<?php echo $i; ?>" name="image<?php echo $i; ?>">
+                </div>
+            <?php } ?>
+
+            <div class="form-group">
+                <label>Amenities</label><br>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="air_conditioner" name="air_conditioner" value="1">
+                    <label class="form-check-label" for="air_conditioner">Air Conditioner</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="power_door_locks" name="power_door_locks" value="1">
+                    <label class="form-check-label" for="power_door_locks">Power Door Locks</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="anti_lock_braking_system" name="anti_lock_braking_system" value="1">
+                    <label class="form-check-label" for="anti_lock_braking_system">AntiLock Braking System</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="brake_assist" name="brake_assist" value="1">
+                    <label class="form-check-label" for="brake_assist">Brake Assist</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="power_steering" name="power_steering" value="1">
+                    <label class="form-check-label" for="power_steering">Power Steering</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="driver_airbag" name="driver_airbag" value="1">
+                    <label class="form-check-label" for="driver_airbag">Driver Airbag</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="passenger_airbag" name="passenger_airbag" value="1">
+                    <label class="form-check-label" for="passenger_airbag">Passenger Airbag</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="power_windows" name="power_windows" value="1">
+                    <label class="form-check-label" for="power_windows">Power Windows</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="cd_player" name="cd_player" value="1">
+                    <label class="form-check-label" for="cd_player">CD Player</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="central_locking" name="central_locking" value="1">
+                    <label class="form-check-label" for="central_locking">Central Locking</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="crash_sensor" name="crash_sensor" value="1">
+                    <label class="form-check-label" for="crash_sensor">Crash Sensor</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="leather_seats" name="leather_seats" value="1">
+                    <label class="form-check-label" for="leather_seats">Leather Seats</label>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<?php include_once 'includes/footer.php'; ?>
+            <button type="submit" name="add" class="btn btn-primary">Add Car</button>
+        </form>
+    </div>
+    <?php include('includes/footer.php'); ?>
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>
