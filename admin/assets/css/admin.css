@@ -1,0 +1,249 @@
+/* Admin Dashboard Styles */
+:root {
+  --primary-color: #f5a742;
+  --primary-dark: #e09530;
+  --primary-light: #ffc062;
+  --secondary-color: #333;
+  --text-color: #333;
+  --light-text: #777;
+  --border-color: #e0e0e0;
+  --bg-light: #f8f9fa;
+  --danger: #dc3545;
+  --success: #28a745;
+  --warning: #ffc107;
+  --info: #17a2b8;
+  --navbar-height: 70px;
+  --font-family: "Poppins", sans-serif;
+}
+
+/* General Styles */
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-light);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+  padding-top: 70px; /* For fixed navbar */
+  overflow-x: hidden;
+}
+
+a {
+  text-decoration: none;
+  color: var(--primary-color);
+}
+
+a:hover {
+  color: var(--primary-dark);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+/* Admin Navbar */
+.admin-navbar {
+  background-color: #343a40;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  height: var(--navbar-height);
+  z-index: 1030;
+}
+
+.brand-text {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.brand-text-highlight {
+  color: var(--primary-color);
+}
+
+.admin-navbar .nav-link {
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+}
+
+.admin-navbar .nav-link:hover,
+.admin-navbar .nav-link.active {
+  color: #fff;
+}
+
+.admin-navbar .dropdown-menu {
+  border: none;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.admin-navbar .dropdown-item {
+  padding: 0.5rem 1.5rem;
+  color: var(--text-color);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.admin-navbar .dropdown-item:hover {
+  background-color: rgba(245, 167, 66, 0.1);
+  color: var(--primary-color);
+}
+
+/* Admin Content */
+.admin-content {
+  padding: 2rem 0;
+}
+
+.admin-page-title {
+  margin-bottom: 1.5rem;
+}
+
+.admin-page-title h1 {
+  font-weight: 700;
+  color: var(--secondary-color);
+  margin-bottom: 0.5rem;
+  font-size: 1.75rem;
+}
+
+.admin-page-title p {
+  color: var(--light-text);
+  margin-bottom: 0;
+}
+
+/* Cards */
+.card {
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.card-header {
+  background-color: #fff;
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+}
+
+.card-footer {
+  background-color: #fff;
+  border-top: 1px solid var(--border-color);
+  padding: 1rem 1.5rem;
+}
+
+/* Stat Cards */
+.stat-card {
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 100%;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+  opacity: 0.8;
+}
+
+/* Tables */
+.table-responsive {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  border-top: none;
+  padding: 1rem;
+}
+
+.table td {
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(245, 167, 66, 0.05);
+}
+
+/* Forms */
+.form-control:focus,
+.btn:focus {
+  box-shadow: 0 0 0 0.25rem rgba(245, 167, 66, 0.25);
+  border-color: var(--primary-color);
+}
+
+.form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: ">";
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .admin-navbar .navbar-collapse {
+    background-color: #343a40;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .admin-content {
+    padding: 1.5rem 0;
+  }
+
+  .stat-card .card-body {
+    padding: 1rem;
+  }
+
+  .stat-card h3 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .admin-content {
+    padding: 1rem 0;
+  }
+
+  .admin-page-title h1 {
+    font-size: 1.5rem;
+  }
+}

@@ -1,0 +1,233 @@
+/* Authentication Pages Styles */
+
+/* Login and Register Sections */
+.login-section,
+.register-section {
+  padding: 80px 0;
+  background-color: #f8f9fa;
+}
+
+.login-wrapper,
+.register-wrapper {
+  background-color: white;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+  overflow: hidden;
+}
+
+.login-header,
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-header h2,
+.register-header h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--dark-color);
+  margin-bottom: 10px;
+}
+
+.login-header p,
+.register-header p {
+  color: var(--gray-color);
+  margin-bottom: 0;
+}
+
+.login-form .form-label,
+.register-form .form-label {
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+.login-form .input-group-text,
+.register-form .input-group-text {
+  background-color: white;
+  border-right: none;
+  color: var(--gray-color);
+}
+
+.login-form .form-control,
+.register-form .form-control {
+  border-left: none;
+}
+
+.login-form .form-control:focus,
+.register-form .form-control:focus {
+  box-shadow: none;
+  border-color: #ced4da;
+}
+
+.login-form .input-group:focus-within .input-group-text,
+.register-form .input-group:focus-within .input-group-text {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.login-form .input-group:focus-within .form-control,
+.register-form .input-group:focus-within .form-control {
+  border-color: var(--primary-color);
+}
+
+.toggle-password {
+  border-left: none;
+  background-color: white;
+  color: var(--gray-color);
+}
+
+.toggle-password:hover {
+  color: var(--primary-color);
+  background-color: white;
+  border-color: #ced4da;
+}
+
+.login-form .form-check-input:checked,
+.register-form .form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.forgot-link {
+  color: var(--primary-color);
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.forgot-link:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
+.login-or,
+.register-or {
+  position: relative;
+  text-align: center;
+  margin: 25px 0;
+}
+
+.or-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--border-color);
+  z-index: 1;
+}
+
+.or-text {
+  position: relative;
+  display: inline-block;
+  padding: 0 15px;
+  background-color: white;
+  color: var(--gray-color);
+  font-size: 0.9rem;
+  z-index: 2;
+}
+
+.social-login .btn,
+.social-register .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  font-weight: 500;
+  border-radius: 5px;
+  transition: var(--transition);
+}
+
+.btn-google {
+  background-color: #fff;
+  color: #ea4335;
+  border: 1px solid #ea4335;
+}
+
+.btn-google:hover {
+  background-color: #ea4335;
+  color: white;
+}
+
+.btn-facebook {
+  background-color: #fff;
+  color: #3b5998;
+  border: 1px solid #3b5998;
+}
+
+.btn-facebook:hover {
+  background-color: #3b5998;
+  color: white;
+}
+
+.social-login .btn i,
+.social-register .btn i {
+  margin-right: 10px;
+  font-size: 1.1rem;
+}
+
+.dont-have,
+.already-have {
+  color: var(--gray-color);
+  font-size: 0.95rem;
+}
+
+.dont-have a,
+.already-have a {
+  color: var(--primary-color);
+  font-weight: 500;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.dont-have a:hover,
+.already-have a:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
+/* Password Strength Meter */
+.password-strength {
+  margin-top: 5px;
+}
+
+.password-strength .progress {
+  height: 5px;
+  margin-bottom: 5px;
+}
+
+.password-strength small {
+  font-size: 0.8rem;
+  color: var(--gray-color);
+}
+
+/* Responsive Styles */
+@media (max-width: 767px) {
+  .login-wrapper,
+  .register-wrapper {
+    padding: 30px 20px;
+  }
+
+  .login-header h2,
+  .register-header h2 {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 575px) {
+  .login-section,
+  .register-section {
+    padding: 60px 0;
+  }
+
+  .login-wrapper,
+  .register-wrapper {
+    padding: 25px 15px;
+  }
+
+  .login-header h2,
+  .register-header h2 {
+    font-size: 1.5rem;
+  }
+}

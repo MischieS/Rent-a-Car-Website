@@ -1,0 +1,108 @@
+/* Primary Image Styles */
+.primary-image-container {
+  margin-bottom: 15px;
+}
+.primary-image-preview {
+  width: 100%;
+  height: 250px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
+}
+.primary-image-preview:hover {
+  border-color: #6c757d;
+  background-color: #e9ecef;
+}
+.primary-image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.upload-placeholder {
+  text-align: center;
+  color: #6c757d;
+}
+
+/* Additional Images Styles */
+.additional-images-container {
+  margin-bottom: 15px;
+}
+.additional-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 10px;
+}
+.additional-image-item {
+  width: 100%;
+  height: 150px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
+}
+.additional-image-item:hover {
+  border-color: #6c757d;
+  background-color: #e9ecef;
+}
+.additional-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.add-image-btn {
+  color: #6c757d;
+}
+.add-image-btn:hover {
+  color: #495057;
+}
+.remove-image-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #dc3545;
+  z-index: 10;
+}
+.remove-image-btn:hover {
+  background-color: rgba(255, 255, 255, 1);
+  color: #b02a37;
+}
+.image-order {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* Drag and Drop Styles */
+.sortable-ghost {
+  opacity: 0.4;
+}
+.sortable-chosen {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
